@@ -1,3 +1,5 @@
 source_documents
 venv_Rehab_RAG
 .env
+Show-Tree.ps1
+chroma_db
