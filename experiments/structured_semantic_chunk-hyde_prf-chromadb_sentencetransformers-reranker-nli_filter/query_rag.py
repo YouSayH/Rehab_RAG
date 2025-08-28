@@ -59,19 +59,35 @@ class RAGPipeline:
             params=embedder_cfg.get('params', {})
         )
 
-        enhancer_cfg = q_cfg['query_enhancer']
-        self.query_enhancer = get_instance(
-            module_name=enhancer_cfg['module'],
-            class_name=enhancer_cfg['class'],
-            params={'llm': self.llm}
-        )
+        if 'query_enhancer' in q_cfg:
+            enhancer_cfg = q_cfg['query_enhancer']
+            self.query_enhancer = get_instance(
+                module_name=enhancer_cfg['module'],
+                class_name=enhancer_cfg['class'],
+                params={'llm': self.llm}
+            )
+        else:
+            self.query_enhancer = None
 
-        filter_cfg = q_cfg['filter']
-        self.filter = get_instance(
-            module_name=filter_cfg['module'],
-            class_name=filter_cfg['class'],
-            params=filter_cfg.get('params', {})
-        )
+        if 'reranker' in q_cfg:
+            reranker_cfg = q_cfg['reranker']
+            self.reranker = get_instance(
+                module_name=reranker_cfg['module'],
+                class_name=reranker_cfg['class'],
+                params=reranker_cfg.get('params', {})
+            )
+        else:
+            self.reranker = None
+
+        if 'filter' in q_cfg:
+            filter_cfg = q_cfg['filter']
+            self.filter = get_instance(
+                module_name=filter_cfg['module'],
+                class_name=filter_cfg['class'],
+                params=filter_cfg.get('params', {})
+            )
+        else:
+            self.filter = None
 
         full_db_path = os.path.join(SCRIPT_DIR, config['database']['path'])
         retriever_params = {
@@ -115,16 +131,24 @@ class RAGPipeline:
     def query(self, query: str):
         print(f"\n[ユーザーの質問]: {query}")
 
-        print("\n[ステップ1/5] HyDEで検索クエリを拡張中...")
+        print("\n[ステップ1/6] HyDEで検索クエリを拡張中...")
         enhanced_query = self.query_enhancer.enhance(query)
         print(f"  - 拡張されたクエリ (検索に使用):\n'{enhanced_query[:150]}...'")
 
-        print("\n[ステップ2/5] 関連文書を検索中...")
-        results = self.retriever.retrieve(enhanced_query, n_results=10)
+        print("\n[ステップ2/6] 関連文書を検索中...")
+        results = self.retriever.retrieve(enhanced_query, n_results=15)
         docs, metadatas = results['documents'][0], results['metadatas'][0]
         print(f"  - {len(docs)}件の文書を取得しました。")
 
-        print("\n[ステップ3/5] NLIモデルで矛盾情報をフィルタリング中...")
+        if self.reranker:
+            print("\n[ステップ3/6] CrossEncoderで検索結果をリランキング中...")
+            reranked_docs, reranked_metadatas = self.reranker.rerank(query, docs, metadatas)
+            docs, metadatas = reranked_docs, reranked_metadatas
+            print(f"  - リランキングが完了しました。")
+        else:
+            print("\n[ステップ3/6] リランキングはスキップされました。")
+
+        print("\n[ステップ4/6] NLIモデルで矛盾情報をフィルタリング中...")
         filtered_docs, filtered_metadatas = self.filter.filter(query, docs, metadatas)
         print(f"  - フィルタリング後、{len(filtered_docs)}件の文書が残りました。 ({len(docs) - len(filtered_docs)}件を除外)")
 
@@ -132,14 +156,14 @@ class RAGPipeline:
             print("\n[最終回答]\n参考情報の中に関連する情報が見つかりませんでした。")
             return
             
-        print("\n[ステップ4/5] LLM用のプロンプトを構築中...")
+        print("\n[ステップ5/6] LLM用のプロンプトを構築中...")
         top_k = 5
         final_docs = filtered_docs[:top_k]
         final_metadatas = filtered_metadatas[:top_k]
         print(f"  - 最も関連性の高い上位{len(final_docs)}件を使用します。")
         final_prompt = self.construct_prompt(query, final_docs, final_metadatas)
 
-        print("\n[ステップ5/5] LLMで最終回答を生成中...")
+        print("\n[ステップ6/6] LLMで最終回答を生成中...")
         time.sleep(1) # レート制限対策
         final_answer = self.llm.generate(final_prompt)
         
