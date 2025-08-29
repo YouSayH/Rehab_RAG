@@ -28,12 +28,14 @@ build_components:
   # [エンベッダー選択] テキストをベクトルに変換するモデルを決定します。
   # モデルを変更すれば、ベクトル空間の質が変わります。
   embedder:
-    module: rag_components.embedders.sentence_transformer_embedder
-    class: SentenceTransformerEmbedder
+    module: rag_components.embedders.gemini_embedder
+    class: GeminiEmbedder
     params:
-      model_name: "intfloat/multilingual-e5-large"
-      device: "auto" # GPUが利用可能なら"cuda"、そうでなければ"cpu"
-      
+      model_name: "gemini-embedding-001"
+      batch_size: 16 
+      requests_per_minute: 4
+
+
 # RAGクエリフェーズ (`query_rag.py`実行時に使用)
 # ユーザーからの質問に回答する際に使用するコンポーネントを定義します。
 query_components:
@@ -48,10 +50,10 @@ query_components:
 
   # [クエリ拡張手法の選択]
   # （注意）HyDEを無効にしたい場合: この`query_enhancer`セクション全体をコメントアウトするか削除してください。
-  # query_enhancer:
-  #   module: rag_components.query_enhancers.hyde_generator
-  #   class: HydeQueryEnhancer
-  #   params: {} # llmはメインのものが自動で注入されます
+  query_enhancer:
+    module: rag_components.query_enhancers.hyde_generator
+    class: HydeQueryEnhancer
+    params: {} # llmはメインのものが自動で注入されます
 
   # [リトリーバー選択] どのベクトルDBから検索するかを決定します。
   # (今回はChromaDBで固定)
@@ -79,11 +81,12 @@ query_components:
       
   # [エンベッダー選択] クエリ実行時にも、DB構築時と同じモデルを使う必要があります。
   embedder:
-    module: rag_components.embedders.sentence_transformer_embedder
-    class: SentenceTransformerEmbedder
+    module: rag_components.embedders.gemini_embedder
+    class: GeminiEmbedder
     params:
-      model_name: "intfloat/multilingual-e5-large"
-      device: "auto"
+      model_name: "gemini-embedding-001"
+      batch_size: 16 
+      requests_per_minute: 4
 
 # その他設定
 # 知識源となるドキュメントが格納されているフォルダのパス

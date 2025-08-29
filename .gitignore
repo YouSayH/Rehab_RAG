@@ -5,3 +5,5 @@ Show-Tree.ps1
 db
 __pycache__
 A.json
+*.log
+evaluation/**/*.csv
