@@ -1,5 +1,6 @@
 import chromadb
 import os
+from tqdm import tqdm
 
 class ChromaDBRetriever:
     """
@@ -47,25 +48,43 @@ class ChromaDBRetriever:
             chunks (list[dict]): チャンク情報の辞書のリスト。
             batch_size (int): 一度に処理するチャンクの数。
         """
-        for i in range(0, len(chunks), batch_size):
-            batch = chunks[i:i+batch_size]
-            
-            ids = [chunk["id"] for chunk in batch]
-            texts = [chunk["text"] for chunk in batch]
-            metadatas = [chunk["metadata"] for chunk in batch]
-            
-            # Embedderを使ってテキストをベクトルに変換
-            embeddings = self.embedder.embed_documents(texts)
+    def add_documents(self, chunks: list[dict], batch_size: int = 100):
+        """
+        チャンクのリストをデータベースに追加（または更新）します。
+        APIベースのEmbedderのエラーを考慮し、失敗したチャンクは除外します。
+        """
+        # まず、全チャンクのテキストを抽出
+        texts = [chunk['text'] for chunk in chunks]
+        
+        # Embedderを呼び出して、全コンテンツのベクトルを一括で取得
+        print("文書のベクトル化を開始します...")
+        embeddings = self.embedder.embed_documents(texts)
 
-            # `upsert` を使うと、IDが既に存在すればデータを更新、なければ新規追加します。
-            # これにより、スクリプトを再実行しても安全にデータを追加・更新できます。
+        # エンベディングに失敗したチャンクを除外するフィルタリング処理
+        valid_chunks = []
+        valid_embeddings = []
+        for chunk, embedding in zip(chunks, embeddings):
+            if embedding is not None:
+                valid_chunks.append(chunk)
+                valid_embeddings.append(embedding)
+
+        print(f"ベクトル化に成功した {len(valid_chunks)} / {len(chunks)} 個のチャンクをDBに格納します。")
+
+        if not valid_chunks:
+            print("警告: データベースに追加できる有効なチャンクがありません。処理を終了します。")
+            return
+            
+        # ChromaDBへの追加処理をバッチで行う
+        for i in tqdm(range(0, len(valid_chunks), batch_size), desc="Adding to ChromaDB"):
+            batch_chunks = valid_chunks[i:i + batch_size]
+            batch_embeddings = valid_embeddings[i:i + batch_size]
+
             self.collection.upsert(
-                ids=ids,
-                embeddings=embeddings,
-                documents=texts,
-                metadatas=metadatas
+                ids=[chunk['id'] for chunk in batch_chunks],
+                documents=[chunk['text'] for chunk in batch_chunks],
+                metadatas=[chunk['metadata'] for chunk in batch_chunks],
+                embeddings=batch_embeddings
             )
-            print(f"  - バッチ {i//batch_size + 1} を処理しました。({min(i+batch_size, len(chunks))}/{len(chunks)})")
 
     def retrieve(self, query_text: str, n_results: int = 10) -> dict:
         """
