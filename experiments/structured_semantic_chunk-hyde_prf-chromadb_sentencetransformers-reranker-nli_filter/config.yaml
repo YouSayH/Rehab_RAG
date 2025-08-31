@@ -48,10 +48,10 @@ query_components:
 
   # [クエリ拡張手法の選択]
   # （注意）HyDEを無効にしたい場合: この`query_enhancer`セクション全体をコメントアウトするか削除してください。
-  # query_enhancer:
-  #   module: rag_components.query_enhancers.hyde_generator
-  #   class: HydeQueryEnhancer
-  #   params: {} # llmはメインのものが自動で注入されます
+  query_enhancer:
+    module: rag_components.query_enhancers.hyde_generator
+    class: HydeQueryEnhancer
+    params: {} # llmはメインのものが自動で注入されます
 
   # [リトリーバー選択] どのベクトルDBから検索するかを決定します。
   # (今回はChromaDBで固定)
@@ -60,13 +60,13 @@ query_components:
     class: ChromaDBRetriever
     params: {} # path, collection_name, embedderは他から自動で注入されます
 
-  # （注意）リランキングを無効にしたい場合: この`reranker`セクション全体をコメントアウトするか削除してください。
-  reranker:
-    module: rag_components.rerankers.cross_encoder_reranker
-    class: CrossEncoderReranker
-    params:
-      model_name: "BAAI/bge-reranker-v2-m3" # 日本語タスクに適したモデルの例
-      device: "auto"
+  # # （注意）リランキングを無効にしたい場合: この`reranker`セクション全体をコメントアウトするか削除してください。
+  # reranker:
+  #   module: rag_components.rerankers.cross_encoder_reranker
+  #   class: CrossEncoderReranker
+  #   params:
+  #     model_name: "BAAI/bge-reranker-v2-m3" # 日本語タスクに適したモデルの例
+  #     device: "auto"
 
   # [フィルタリング手法の選択]
   # （注意）NLIフィルタを無効にしたい場合: この`filter`セクション全体をコメントアウトするか削除してください。
