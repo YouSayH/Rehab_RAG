@@ -50,7 +50,7 @@ class SelfReflectiveFilter:
 
 # あなたの評価:"""
             
-            time.sleep(1) # APIレート制限対策
+            time.sleep(10) # APIレート制限対策
             response = self.llm.generate(prompt, temperature=0.0, max_output_tokens=10)
             
             if "[RELEVANT]" in response:
