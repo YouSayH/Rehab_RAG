@@ -62,13 +62,13 @@ query_components:
     class: ChromaDBRetriever
     params: {} # path, collection_name, embedderは他から自動で注入されます
 
-  # （注意）リランキングを無効にしたい場合: この`reranker`セクション全体をコメントアウトするか削除してください。
-  reranker:
-    module: rag_components.rerankers.cross_encoder_reranker
-    class: CrossEncoderReranker
-    params:
-      model_name: "BAAI/bge-reranker-v2-m3" # 日本語タスクに適したモデルの例
-      device: "auto"
+  # # （注意）リランキングを無効にしたい場合: この`reranker`セクション全体をコメントアウトするか削除してください。
+  # reranker:
+  #   module: rag_components.rerankers.cross_encoder_reranker
+  #   class: CrossEncoderReranker
+  #   params:
+  #     model_name: "BAAI/bge-reranker-v2-m3" # 日本語タスクに適したモデルの例
+  #     device: "auto"
 
   # [フィルタリング手法の選択]
   # （注意）NLIフィルタを無効にしたい場合: この`filter`セクション全体をコメントアウトするか削除してください。
