@@ -293,7 +293,7 @@ python evaluation/evaluate_rag.py experiments/<実験名> --limit 3
 
 ### HyDE (Hypothetical Document Embeddings)
 
-* **技術解説**: ユーザーのクエリから直接ベクトルを生成するのではなく、まず言語モデルを用いてそのクエリに対する**架空の理想的な回答（Hypothetical Document）**を生成します。その後、生成された架空の文書をベクトル化し、そのベクトルを用いて文書検索を行います。これにより、元のクエリが短くキーワードが不足している場合でも、検索空間内での関連文書とのベクトル類似度を高めることが可能になります。これは`zero-shot`な状況、つまり特定のタスクに対する事前学習なしで高い検索精度を達成する上で効果的です。
+* **技術解説**: ユーザーのクエリから直接ベクトルを生成するのではなく、まず言語モデルを用いてそのクエリに対する架空の理想的な回答（Hypothetical Document）を生成します。その後、生成された架空の文書をベクトル化し、そのベクトルを用いて文書検索を行います。これにより、元のクエリが短くキーワードが不足している場合でも、検索空間内での関連文書とのベクトル類似度を高めることが可能になります。これは`zero-shot`な状況、つまり特定のタスクに対する事前学習なしで高い検索精度を達成する上で効果的です。
 * **参考文献**: Gao, L., Ma, X., Lin, J., & Callan, J. (2022). *Precise Zero-Shot Dense Retrieval without Relevance Labels*. arXiv preprint arXiv:2212.10496.
 * **URL**: [https://arxiv.org/abs/2212.10496](https://arxiv.org/abs/2212.10496)
 
@@ -307,7 +307,7 @@ python evaluation/evaluate_rag.py experiments/<実験名> --limit 3
 * **URL**: 
   - [https://dl.acm.org/doi/10.1145/1645953.1646033](https://dl.acm.org/doi/10.1145/1645953.1646033)
   - [https://learn.microsoft.com/ja-jp/azure/search/hybrid-search-ranking](https://learn.microsoft.com/ja-jp/azure/search/hybrid-search-ranking)
-  
+
 ### Multi-Query Generation
 
 * **技術解説**: 単一のユーザーの質問を、大規模言語モデル（LLM）を用いて複数の異なる視点を持つサブクエリ群に分解するクエリ拡張手法です。生成された各サブクエリで独立して検索を実行し、得られた結果を統合・重複排除することで、元の質問が多角的であったり曖昧であったりする場合でも、関連文書の見落としを減らし、情報の網羅性を高めることを目的とします。
