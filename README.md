@@ -284,3 +284,52 @@ python evaluation/evaluate_rag.py experiments/<実験名> --limit 3
 
   * **手法**: 文書からエンティティと関係性を抽出し、ナレッジグラフを構築。グラフを探索して回答を生成する。
   * **目的**: 文書単体では見えにくい、エンティティ間の複雑な関係性を捉えた高度な推論を可能にする。
+
+---
+
+## 各手法の技術的背景と参考文献
+
+本プロジェクトで実装された各コンポーネントは、近年の自然言語処理および情報検索の研究成果に基づいています。ここでは、主要な手法に関する技術的背景と、原典となる論文を紹介します。
+
+### HyDE (Hypothetical Document Embeddings)
+
+* **技術解説**: ユーザーのクエリから直接ベクトルを生成するのではなく、まず言語モデルを用いてそのクエリに対する**架空の理想的な回答（Hypothetical Document）**を生成します。その後、生成された架空の文書をベクトル化し、そのベクトルを用いて文書検索を行います。これにより、元のクエリが短くキーワードが不足している場合でも、検索空間内での関連文書とのベクトル類似度を高めることが可能になります。これは`zero-shot`な状況、つまり特定のタスクに対する事前学習なしで高い検索精度を達成する上で効果的です。
+* **参考文献**: Gao, L., Ma, X., Lin, J., & Callan, J. (2022). *Precise Zero-Shot Dense Retrieval without Relevance Labels*. arXiv preprint arXiv:2212.10496.
+* **URL**: [https://arxiv.org/abs/2212.10496](https://arxiv.org/abs/2212.10496)
+
+### Hybrid Search with RRF (Reciprocal Rank Fusion)
+
+* **技術解説**: 異なる検索システムからのランキング結果を統合するための手法です。本プロジェクトでは、セマンティックな類似性に基づく**ベクトル検索**と、キーワードの一致度に基づく**BM25**という2つの異なる検索結果を統合するために使用されます。各文書に対して、それぞれの検索システムでのランキング（順位）の逆数を算出し、それらを合計したスコアで最終的な順位を決定します。これにより、どちらかの検索システムで高くランク付けされた文書が最終結果の上位に来るようになり、検索の網羅性と頑健性が向上します。
+* **参考文献**: <br>
+  - 理論: Cormack, G. V., Clarke, C. L., & Buettcher, S. (2009). *Reciprocal Rank Fusion for Extreme Scale Search*.  
+  - 実践: Microsoft Azure AI Search Documentation. Hybrid search ranking with Reciprocal Rank Fusion.
+
+* **URL**: 
+  - [https://dl.acm.org/doi/10.1145/1645953.1646033](https://dl.acm.org/doi/10.1145/1645953.1646033)
+  - [https://learn.microsoft.com/ja-jp/azure/search/hybrid-search-ranking](https://learn.microsoft.com/ja-jp/azure/search/hybrid-search-ranking)
+  
+### Multi-Query Generation
+
+* **技術解説**: 単一のユーザーの質問を、大規模言語モデル（LLM）を用いて複数の異なる視点を持つサブクエリ群に分解するクエリ拡張手法です。生成された各サブクエリで独立して検索を実行し、得られた結果を統合・重複排除することで、元の質問が多角的であったり曖昧であったりする場合でも、関連文書の見落としを減らし、情報の網羅性を高めることを目的とします。
+* **参考文献**: この手法は複数の研究で探求されていますが、概念の基盤となる論文の一つとして以下を挙げます。
+    * Wang, J., et al. (2023). *Query Expansion by an Generative Language Model*. arXiv preprint arXiv:2305.09311.
+* **URL**: [https://arxiv.org/abs/2305.09311](https://arxiv.org/abs/2305.09311)
+
+### Cross-Encoder Reranking
+
+* **技術解説**: `Retriever`が取得した文書候補群を、より精度の高いモデルで再評価（リランキング）する手法です。一般的なベクトル検索（Bi-Encoder）がクエリと文書を別々にベクトル化するのに対し、Cross-Encoderは**クエリと文書をペアで**モデルに入力し、両者の文脈的な相互作用を直接的に考慮した関連度スコアを算出します。計算コストは高くなりますが、より正確な関連性判断が可能となり、最終的なコンテキストの品質向上に大きく寄与します。
+* **参考文献**: Sentence-BERTの論文では、Bi-EncoderとCross-Encoderのアーキテクチャが比較されており、この概念の理解に役立ちます。
+    * Reimers, N., & Gurevych, I. (2019). *Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks*. arXiv preprint arXiv:1908.10084.
+* **URL**: [https://arxiv.org/abs/1908.10084](https://arxiv.org/abs/1908.10084)
+
+### RAPTOR (Recursive Abstractive Processing for Tree-Organized Retrieval)
+
+* **技術解説**: 文書群から情報の階層構造（ツリー）を自動構築する、先進的なデータベース構築手法です。まず文書を小さなチャンクに分割（葉ノード）し、それらをベクトル空間上でクラスタリングします。次に、各クラスタのチャンク群をLLMで要約し、上位階層のノード（枝ノード）を生成します。このプロセスを再帰的に繰り返し、最終的に文書全体を代表する単一のルートノードを構築します。検索時には、クエリはツリーの全階層のノードと比較されるため、質問の抽象度（具体的か、概観的か）に応じて最適な粒度の情報を取得することが可能になります。
+* **参考文献**: Sarthi, P., et al. (2024). *RAPTOR: RECURSIVE ABSTRACTIVE PROCESSING FOR TREE-ORGANIZED RETRIEVAL*. arXiv preprint arXiv:2401.18059.
+* **URL**: [https://arxiv.org/abs/2401.18059](https://arxiv.org/abs/2401.18059)
+
+### Self-RAG (Self-Reflective RAG)
+
+* **技術解説**: LLM自身が生成プロセスを能動的に制御・評価するフレームワークです。固定的なパイプラインではなく、LLMが**リフレクショントークン**と呼ばれる特殊なトークンを生成することで、動的に挙動を変化させます。具体的には、(1)検索がそもそも必要か、(2)検索結果は有用か、(3)生成した回答は検索結果に忠実か、といった複数の判断をLLM自身が行います。これにより、不要な検索をスキップしたり、不適切な情報を破棄したりすることで、RAGパイプラインの効率性と信頼性を大幅に向上させます。
+* **参考文献**: Asai, A., et al. (2023). *Self-RAG: Learning to Retrieve, Generate, and Critique through Self-Reflection*. arXiv preprint arXiv:2310.11511.
+* **URL**: [https://arxiv.org/abs/2310.11511](https://arxiv.org/abs/2310.11511)
