@@ -224,10 +224,20 @@ class RAGPipeline:
         else:
             print("\n[ステップ4/7] フィルタリングはスキップされました。")
             
-        if not docs:
-            print("\n[最終回答]\n参考情報の中に関連する情報が見つかりませんでした。")
-            return
+        # if not docs:
+        #     print("\n[最終回答]\n参考情報の中に関連する情報が見つかりませんでした。")
+        #     return
             
+
+
+        if not docs:
+            not_found_message = "参考情報の中に関連する情報が見つかりませんでした。"
+            print(f"\n[最終回答]\n{not_found_message}")
+            return {
+                "answer": not_found_message,
+                "contexts": []
+            }
+
         # [ステップ5/7] LLM用のプロンプトを構築する
         print("\n[ステップ5/7] LLM用のプロンプトを構築中...")
         top_k = 5
