@@ -62,9 +62,22 @@ query_components:
     module: rag_components.retrievers.chromadb_retriever
     class: ChromaDBRetriever
 
-  # リランキングやフィルタリングも、一旦OFFにしてRAPTOR単体の効果を見ます
-  reranker: null
-  filter: null
+  # [リランカー (Reranker)]
+  # Retrieverが見つけてきた文書を、より高精度なモデルで並べ替える機能。
+  # 無効にする場合は、このセクション全体をコメントアウトするか、値をnullにします。
+  reranker:
+    module: rag_components.rerankers.cross_encoder_reranker
+    class: CrossEncoderReranker
+    params:
+      model_name: "BAAI/bge-reranker-v2-m3"
+      device: "auto"
+
+  filter:
+    module: rag_components.filters.nli_filter
+    class: NLIFilter
+    params:
+      model_name: "MoritzLaurer/mDeBERTa-v3-base-mnli-xnli"
+      device: "auto"
 
   # 検索時にも、DB構築時と同じエンベッダーを使います
   embedder:

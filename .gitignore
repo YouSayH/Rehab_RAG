@@ -7,3 +7,4 @@ __pycache__
 A.json
 *.log
 evaluation/**/*.csv
+*.zip
