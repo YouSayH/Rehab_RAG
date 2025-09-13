@@ -8,3 +8,4 @@ A.json
 *.log
 evaluation/**/*.csv
 *.zip
+create_readonly_user.py
