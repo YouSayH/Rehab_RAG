@@ -128,6 +128,17 @@
 
 
 
+
+
+
+
+
+
+
+
+
+
+
 # こっちはLLMに考えさせず、自分で設定する方
 import os
 import importlib
