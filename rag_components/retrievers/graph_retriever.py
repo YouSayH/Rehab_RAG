@@ -56,39 +56,38 @@ class GraphRetriever:
         if not keywords:
             return {"documents": [[]], "metadatas": [[]]}
 
-        all_context = []
+        all_context_texts = []
         
-        # Cypherクエリを修正し、2ホップ先までの情報を取得するように変更
+        # Cypherクエリを、r.contextを返すように変更
         cypher_query = """
         UNWIND $keywords AS keyword
         MATCH (n)
         WHERE toLower(n.id) CONTAINS toLower(keyword)
-        // nから2ホップ先までの全てのノードと関係を取得
-        MATCH path = (n)-[*..2]-(m)
-        // パスを構成する各要素を返す
-        UNWIND relationships(path) AS rel
-        RETURN startNode(rel).id AS source, type(rel) AS relationship, endNode(rel).id AS target
-        LIMIT 30 
+        MATCH (n)-[r]-(m)
+        RETURN r.context AS context
+        LIMIT 20
         """
         
         try:
             results = self.graph.query(cypher_query, params={'keywords': keywords})
             
             for record in results:
-                all_context.append(f"{record['source']}は「{record['relationship']}」という関係で{record['target']}と繋がっています。")
+                # contextプロパティが存在すればリストに追加
+                if record['context']:
+                    all_context_texts.append(record['context'])
         except Exception as e:
             print(f"エラー: Neo4jクエリの実行中に問題が発生しました: {e}")
             return {"documents": [[]], "metadatas": [[]]}
 
-        if not all_context:
+        if not all_context_texts:
             return {"documents": [[]], "metadatas": [[]]}
 
-        unique_context = list(dict.fromkeys(all_context))
-        final_context_str = "\n".join(unique_context)
-
+        # 重複を排除し、最終的なコンテキストを作成
+        unique_context = list(dict.fromkeys(all_context_texts))
+        
         return {
-            "documents": [[final_context_str]],
-            "metadatas": [[{"source": "Knowledge Graph"}]],
+            "documents": [unique_context[:n_results]],
+            "metadatas": [[{"source": "Knowledge Graph"}] * len(unique_context[:n_results])],
         }
 
     def add_documents(self, chunks: list[dict]):
