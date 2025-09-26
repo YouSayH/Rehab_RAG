@@ -1,6 +1,7 @@
 # Rehab\_RAG: 理学療法ガイドラインのためのRAG手法評価・検証リポジトリ
 
-[](https://github.com/YouSayH/Rehab_RAG)
+[![Project Status: Experimental](https://img.shields.io/badge/status-experimental-orange)](https://github.com/YouSayH/Rehab_RAG)
+
 
 ## 概要 (Overview)
 
@@ -11,7 +12,7 @@
 ### 🎯 このプロジェクトの特徴
 
   * **🧪 コンポーネント化された設計**: RAGの各プロセス（DB構築、検索、判断等）を独立した部品（コンポーネント）として管理。
-  * **⚙️ 柔軟な実験設定**: `config.yaml`ファイルを編集するだけで、様々なコンポーネントの組み合わせを簡単に試し、手法のON/OFFを切り替えられます。
+  * **⚙️ 柔軟な実験設定**:  ルートディレクトリの`rag_config.yaml`を編集するだけで、様々なRAGパイプラインの切り替えが可能です。また、`config.yaml`ファイルを編集するだけで、様々なコンポーネントの組み合わせを簡単に試し、手法のON/OFFを切り替えられます。
   * **📊 定量的な評価**: `Ragas`フレームワークを導入し、「回答の忠実性」や「文脈の再現率」といった客観的な指標で各パイプラインの性能を評価します。
 
 -----
@@ -29,19 +30,14 @@ Rehab_RAG/
 ├── 📁 rag_components/
 │   ├── 📁 builders/
 │   ├── 📁 chunkers/
-│   ├── 📁 embedders/
-│   ├── 📁 filters/
-│   ├── 📁 judges/
-│   ├── 📁 llms/
-│   ├── 📁 query_enhancers/
-│   ├── 📁 rerankers/
+│   │   ... (各種コンポーネント)
 │   └── 📁 retrievers/
 │
 ├── 📁 experiments/
 │   └── 📁 <実験名>/
-│       ├── 📜 config.yaml
+│       ├── 📜 config.yaml         # 個別の実験設定
 │       ├── 🐍 build_database.py
-│       ├── 🐍 query_rag.py
+│       ├── 🐍 query_rag.py (廃止)
 │       └── 🗃️ db/
 │
 ├── 📁 evaluation/
@@ -49,11 +45,14 @@ Rehab_RAG/
 │   ├── 📄 test_dataset.jsonl
 │   └── 📁 logs/
 │
+├── 🐍 query_rag.py
+├── 🐍 schemas.py
+├── 📜 rag_config.yaml              # パイプライン切り替え用設定
 ├── 🔑 .env
 └── 📋 requirements.txt
 ```
 
-### \#\#\# 各要素の詳細
+### 各要素の詳細
 
 #### `📁 source_documents/`
 
@@ -80,7 +79,6 @@ RAGパイプラインを構成する各機能が、**再利用可能なPythonク
   * `📁 <実験名>/`: ディレクトリ名は、その実験で採用している手法の組み合わせを表します。
       * `📜 config.yaml`: その実験で使用する**コンポーネントやモデルを指定する、最も重要な設定ファイル**です。
       * `🐍 build_database.py`: `config.yaml`に従い、ベクトルDBを構築するスクリプト。
-      * `🐍 query_rag.py`: `config.yaml`で定義されたパイプラインを使い、対話形式で動作確認するスクリプト。
       * `🗃️ db/`: `build_database.py`によって構築されたChromaDBのデータが保存される場所。
 
 #### `📁 evaluation/`
@@ -90,6 +88,15 @@ RAGパイプラインを構成する各機能が、**再利用可能なPythonク
   * `🐍 evaluate_rag.py`: 指定した実験設定（パイプライン）を、テストデータセットを用いて自動評価するスクリプト。
   * `📄 test_dataset.jsonl`: 評価に使用する「質問」と「理想的な回答（正解データ）」のペアを格納したファイル。
   * `📁 logs/`: `evaluate_rag.py`を実行した際の評価スコア（CSV形式）と詳細な実行ログが保存されます。
+
+
+#### `📁 ルートディレクトリ`
+
+  * `🐍 query_rag.py`: **全てのRAGパイプラインを実行するための統一されたスクリプト**です。`rag_config.yaml`の設定を読み込み、指定されたパイプラインを動的にロードして実行します。
+  * `🐍 schemas.py`: LLMに**構造化されたJSON形式で回答を生成させる**ための、Pydanticによるデータスキーマを定義しています。これにより、回答の形式を安定させ、アプリケーションのバックエンドで扱いやすい出力を得ることができます。
+  * `📜 rag_config.yaml`: **どの実験パイプラインを有効にするかを指定するマスターコントロールファイル**です。このファイルの`active_pipeline`の値を変更するだけで、実行するRAGの構成を簡単に切り替えられます。
+
+
 
 -----
 
@@ -118,11 +125,17 @@ RAGパイプラインを構成する各機能が、**再利用可能なPythonク
     pip install -r requirements.txt
     ```
 
-4.  **APIキーの設定**
-    プロジェクトのルートディレクトリに `.env` という名前のファイルを作成し、お使いのAPIキーを記述します。
+
+4.  **APIキーとデータベース情報の設定**
+    プロジェクトのルートディレクトリに `.env` という名前のファイルを作成し、お使いのAPIキーやデータベース接続情報を記述します。
 
     ```.env
     GEMINI_API_KEY="ここにあなたのAPIキーを貼り付けてください"
+
+    # Graph RAG (Neo4j) 利用時に必要(後述)
+    NEO4J_URI="neo4j://127.0.0.1:7687"
+    NEO4J_USERNAME="neo4j"
+    NEO4J_PASSWORD="your_neo4j_password"
     ```
 
 5.  **（ハイブリッド検索利用時）MeCabのインストール**
@@ -141,13 +154,82 @@ RAGパイプラインを構成する各機能が、**再利用可能なPythonク
       * **変数名**: `MECABRC`
       * **変数値**: `C:\Program Files\MeCab\etc\mecabrc` （※インストール先のパスに合わせて変更してください）
 
------
+6.  **（オプション）Neo4j Desktopのセットアップ**
+    知識グラフを活用する`GraphBuilder`および`GraphRetriever`を使用するには、Neo4jデータベースのセットアップが必要です。
+
+    **1. Neo4j Desktopのインストール**
+
+      * \*\*[Neo4j Desktop公式サイト](https://neo4j.com/download/)\*\*からご使用のOSに合ったインストーラーをダウンロードし、インストールします。
+      * 初回起動時にアクティベーションキーを入力し、利用登録を完了させてください。
+
+
+    **2. データベース(DBMS)の作成と起動**
+
+      1.  Neo4j Desktopの`Local instances`画面で、右上の`Create instance`を選択します。
+      2.  `Instance Name`（例: `Rehab_test`）と`Password`を入力し、`Create`ボタンを押します。
+            * **重要**: ここで設定したパスワードは後ほど`.env`ファイルで使用しますので、忘れないようにしてください。
+      3.  APOCプラグインの有効化(詳細は後述)
+      4.  作成されたインスタンスの「Start instance」ボタン◯▶️を押し、ステータスが「RUNNING」（緑色のランプ）になるのを待ちます。
+
+
+    **3. APOCプラグインの有効化**
+
+      これは、LangChainがグラフ構造を読み取るために**必須の拡張機能**です。
+
+      1.  対象のDBMSインスタンスが**停止**していることを確認します。
+      2.  インスタンスカード右上の「...」メニューから「Plugins」を選択します。
+      3.  リスト内の「APOC」を探し、「Install」ボタンをクリックします。
+      4.  再度「...」メニューから「Open neo4j.conf」を選択し、設定ファイルをテキストエディタで開きます。
+      5.  ファイルの末尾に以下の1行を**追記**します。
+            * **注意**: 近年のバージョンではAPOCインストール時に自動で追記されることがあります。その場合は重複して記述する必要はありません。
+          ```
+          dbms.security.procedures.unrestricted=apoc.*
+          ```
+      6.  ファイルを上書き保存し、インスタンスを再度起動します。エラーが出なければセットアップ成功です。
+
+
+    **4. Pythonライブラリの更新**
+
+      Graph RAG関連のライブラリを最新の安定版にアップグレードします。
+
+      1.  プロジェクトの仮想環境を有効化します。
+      2.  ターミナルで以下のコマンドを実行してください。
+          ```bash
+          pip install --upgrade langchain langchain-neo4j langchain-core langchain-google-genai pydantic
+          ```
+
+
+    **5. `.env`ファイルへの追記**
+
+      プロジェクトのルートディレクトリにある`.env`ファイルに、Neo4jデータベースへの接続情報を追記します。
+
+        ```.env
+        GEMINI_API_KEY="ここにあなたのAPIキーを貼り付けてください"
+
+        # Graph RAG (Neo4j) 利用時に必要
+        NEO4J_URI="neo4j://127.0.0.1:7687"
+        NEO4J_USERNAME="neo4j"
+        NEO4J_PASSWORD="your_neo4j_password"
+        ```
+
 
 ## 使い方 (Usage)
 
+
 RAGパイプラインの実験と評価は、以下の4ステップで行います。
 
-### ステップ1: 実験内容の定義 (`config.yaml`)
+### ステップ1: 実行するパイプラインの選択 (`rag_config.yaml`)
+
+プロジェクトルートにある **`rag_config.yaml`** を開き、`active_pipeline`に使用したい実験ディレクトリ名を指定します。
+
+```yaml
+# ここで実行したいRAGパイプラインの名前を指定するだけ
+active_pipeline: "graph_rag_experiment"
+# active_pipeline: "hybrid_search_experiment"
+# ...
+```
+
+### ステップ2: 実験内容の定義 (`config.yaml`)
 
 `experiments/<実験名>/config.yaml` を開き、使用したいコンポーネントを定義します。
 
@@ -177,22 +259,25 @@ query_components:
       model_name: "MoritzLaurer/mDeBERTa-v3-base-mnli-xnli"
 ```
 
-### ステップ2: データベースの構築 (`build_database.py`)
 
-`config.yaml`で定義した`Builder`コンポーネントに従い、知識源からDBを構築します。
+### ステップ3: データベースの構築 (`build_database.py`)
+
+`active_pipeline`で指定した実験の`config.yaml`に従い、知識源からDBを構築します(.\experiments\<実験名>\上にdbフォルダーができます。)。
 
 ```bash
-# プロジェクトのルートディレクトリから実行
+# プロジェクトのルートディレクトリから、対象の実験フォルダ内にあるbuild_database.pyを実行
 python .\experiments\<実験名>\build_database.py
 ```
 
+**注意**: `graph_rag_experiment`のようにGraph RAGを使用する場合、このステップでNeo4jデータベースにナレッジグラフが構築されます。
+
 ### ステップ3: パイプラインの動作確認 (`query_rag.py`)
 
-構築したパイプラインが意図通りに動くか、対話形式で定性的に確認します。
+**プロジェクトのルートディレクトリにある`query_rag.py`** を実行します。`rag_config.yaml`で指定されたパイプラインが自動で読み込まれ、対話形式で動作確認ができます。
 
 ```bash
 # プロジェクトのルートディレクトリから実行
-python .\experiments\<実験名>\query_rag.py
+python query_rag.py
 ```
 
 ### ステップ4: 定量的評価の実行 (`evaluate_rag.py`)
@@ -208,6 +293,8 @@ python evaluation/evaluate_rag.py experiments/<実験名> --limit 3
 ```
 
 実行後、`evaluation/logs/`に`scores_...csv`と`log_...log`が生成されます。
+
+
 
 -----
 
@@ -236,9 +323,10 @@ python evaluation/evaluate_rag.py experiments/<実験名> --limit 3
 
 | コンポーネントの種類 | 責務・役割 | 詳細解説 |
 | :--- | :--- | :--- |
-| **`Builder`** | **DB構築戦略の定義** | データベースを構築するための全体的なワークフローを定義・実行します。 <br> ・**`DefaultBuilder`**: `Chunker`→`Embedder`→`Retriever`という直線的なプロセスで、標準的なベクトルデータベースを構築します。 <br> ・**`RAPTORBuilder`**: 文書群を再帰的にクラスタリングし、要約を生成するプロセスを通じて、情報の階層構造を持つベクトルデータベースを構築します。これにより、質問の抽象度に応じた多角的な情報検索が可能になります。 |
+| **`Builder`** | **DB構築戦略の定義** | データベースを構築するための全体的なワークフローを定義・実行します。 <br> ・**`DefaultBuilder`**: `Chunker`→`Embedder`→`Retriever`という直線的なプロセスで、標準的なベクトルデータベースを構築します。 <br> ・**`RAPTORBuilder`**: 文書群を再帰的にクラスタリングし、要約を生成するプロセスを通じて、情報の階層構造を持つベクトルデータベースを構築します。これにより、質問の抽象度に応じた多角的な情報検索が可能になります。 <br>・**`GraphBuilder`**: **(New\!)** テキストからエンティティと関係性を抽出し、Neo4jにナレッジグラフを構築します。複雑な関係性の問いに強くなります。 |
 | **`Chunker`** | **文書の分割** | 元の文書を、意味的な一貫性を保ちながら検索に適した単位（チャンク）に分割します。 <br> ・**`StructuredMarkdownChunker`**: Markdownの文書構造（見出しレベル）を解析し、セクション単位での文脈を維持したままチャンクを生成します。 |
 | **`Embedder`** | **テキストのベクトル化** | 各チャンクを、セマンティックな意味を捉えた高次元の数値ベクトル（Embedding）に変換します。 <br> ・**`SentenceTransformerEmbedder`**: ローカル環境で実行可能な事前学習済みモデルを利用し、テキストをベクトル化します。 <br> ・**`GeminiEmbedder`**: Googleの提供する大規模モデルAPIを利用し、より高品質なベクトル表現を生成します。 |
+
 
 -----
 
@@ -250,11 +338,15 @@ python evaluation/evaluate_rag.py experiments/<実験名> --limit 3
 | :--- | :--- | :--- |
 | **`Judge`** | **検索要否の判断** | **(Self-RAG)** ユーザーの質問に対し、外部知識（データベース検索）が必要か否かをLLMが判断します。 <br> ・**`RetrievalJudge`**: 挨拶や一般的な対話など、検索が不要なクエリを識別し、後続のRAGプロセスをスキップすることで、応答の効率化と低コスト化を実現します。 |
 | **`Query Enhancer`** | **検索クエリの拡張** | ユーザーの入力クエリを、検索精度を向上させるためにより効果的な形式に変換または拡張します。 <br> ・**`HydeQueryEnhancer`**: 質問に対する架空の理想的な回答（Hypothetical Document）をLLMに生成させ、その内容で検索することで、潜在的なキーワードを補完します。 <br> ・**`MultiQueryGenerator`**: 単一の質問を、LLMを用いて複数の異なる視点を持つサブクエリ群に分解し、検索の網羅性を向上させます。 |
-| **`Retriever`** | **関連文書の検索** | ベクトル化されたクエリを用いて、データベースから関連性の高い上位k件のチャンクを検索（リトリーブ）します。 <br> ・**`ChromaDBRetriever`**: ベクトル間の類似度計算（コサイン類似度など）のみに基づき、高速に検索を実行します。 <br> ・**`HybridRetriever`**: 意味的な類似性で検索するベクトル検索と、キーワードの一致で検索するBM25を組み合わせ、Reciprocal Rank Fusion (RRF)で結果を統合することで、検索の再現率と適合率の両立を目指します。 |
+| **`Retriever`** | **関連文書の検索** | ベクトル化されたクエリを用いて、データベースから関連性の高い上位k件のチャンクを検索（リトリーブ）します。 <br> ・**`ChromaDBRetriever`**: ベクトル間の類似度計算（コサイン類似度など）のみに基づき、高速に検索を実行します。 <br> ・**`HybridRetriever`**: 意味的な類似性で検索するベクトル検索と、キーワードの一致で検索するBM25を組み合わせ、Reciprocal Rank Fusion (RRF)で結果を統合することで、検索の再現率と適合率の両立を目指します。 <br>・**`GraphRetriever`**: 自然言語の質問からキーワードを抽出し、Neo4jナレッジグラフを横断的に検索して関連情報を取得します。 |
 | **`Reranker`** | **検索結果の再ランキング** | `Retriever`によって取得された候補群を、より計算コストが高いが精度の優れたモデルで再評価し、関連性の高い順に並べ替えます。 <br> ・**`CrossEncoderReranker`**: 質問と候補チャンクをペアで入力として受け取り、文脈的な関連性をより深く考慮したスコアリングを行います。 |
 | **`Filter`** | **候補文書のフィルタリング** | リランキング後の候補群から、ノイズや矛盾を含む不適切な情報を除去し、最終的なコンテキストの品質を向上させます。 <br> ・**`NLIFilter`**: 自然言語推論（NLI）モデルを用い、質問と候補チャンクの関係が論理的に「矛盾(Contradiction)」していないかを判定し、矛盾する情報を除外します。 <br> ・**`SelfReflectiveFilter`**: **(Self-RAG)** 候補チャンクが質問に回答するための根拠として適切かをLLM自身が評価（[RELEVANT] / [IRRELEVANT]）し、より厳密な基準でコンテキストを精選します。 |
-| **`LLM`** | **最終回答の生成** | 厳選された最終的なコンテキストと元の質問をプロンプトとして、大規模言語モデル（LLM）がユーザーへの回答を生成します。 <br> ・**`GeminiLLM`**: GoogleのGeminiモデルを利用し、提供された根拠情報に忠実で、自然かつ正確な回答を生成します。 |
+| **`LLM`** | **最終回答の生成** | 厳選された最終的なコンテキストと元の質問をプロンプトとして、大規模言語モデル（LLM）がユーザーへの回答を生成します。`schemas.py`と連携することで、**構造化されたJSON形式での出力も可能**です。 |
 -----
+
+
+
+
 
 ## 🗺️ 今後の検証ロードマップ (Future Validation Roadmap)
 
