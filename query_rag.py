@@ -157,7 +157,23 @@ class RAGPipeline:
         self.judge = self._initialize_component('judge', q_cfg, {'llm': self.llm})
         self.query_enhancer = self._initialize_component('query_enhancer', q_cfg, {'llm': self.llm})
         self.reranker = self._initialize_component('reranker', q_cfg)
-        self.filter = self._initialize_component('filter', q_cfg, {'llm': self.llm})
+
+        self.filters = []
+        if 'filter' in q_cfg and q_cfg['filter']:
+            filter_configs = q_cfg['filter']
+            # configでフィルターが一つだけ指定された場合もリストとして扱えるようにする
+            if not isinstance(filter_configs, list):
+                filter_configs = [filter_configs]
+            
+            for filter_cfg in filter_configs:
+                params = filter_cfg.get('params', {})
+                params.update({'llm': self.llm}) # SelfReflectiveFilterなどのためにLLMを注入
+                self.filters.append(get_instance(
+                    module_name=filter_cfg['module'],
+                    class_name=filter_cfg['class'],
+                    params=params
+                ))
+        # self.filter = self._initialize_component('filter', q_cfg, {'llm': self.llm})
             
         # Retrieverの初期化 (DBパスの解決もここで行う)
         retriever_cfg = q_cfg.get('retriever')
@@ -172,6 +188,10 @@ class RAGPipeline:
                 "embedder": self.embedder,
                 **retriever_cfg.get('params', {})
             }
+            # もし使用するRetrieverが'GraphRetriever'の場合、llmインスタンスを追加で渡す
+            if retriever_cfg.get('class') == 'GraphRetriever':
+                retriever_params['llm'] = self.llm
+                
             self.retriever = get_instance(
                 retriever_cfg['module'],
                 retriever_cfg['class'],
@@ -195,6 +215,8 @@ class RAGPipeline:
         """コンポーネントの初期化処理を共通化"""
         if name in config and config[name]:
             cfg = config[name]
+            if isinstance(cfg, list):
+                 return None
             params = cfg.get('params', {})
             params.update(extra_params)
             return get_instance(
@@ -279,17 +301,22 @@ class RAGPipeline:
             print("\n[ステップ3/7] リランキングはスキップされました。")
         
         # 6. (オプション) フィルタリング
-        if self.filter:
+        if self.filters:
             print("\n[ステップ4/7] 検索結果をフィルタリング中...")
-            docs, metadatas = self.filter.filter(search_query, docs, metadatas)
-            print(f"  - フィルタリング後、{len(docs)}件の文書が残りました。")
+            original_doc_count = len(docs)
+            for f in self.filters:
+                print(f"  - フィルター '{f.__class__.__name__}' を実行中...")
+                docs, metadatas = f.filter(search_query, docs, metadatas)
+            
+            excluded_count = original_doc_count - len(docs)
+            print(f"  - フィルタリング後、{len(docs)}件の文書が残りました。 ({excluded_count}件を除外)")
         else:
             print("\n[ステップ4/7] フィルタリングはスキップされました。")
             
         if not docs:
             not_found_message = "参考情報の中に関連する情報が見つかりませんでした。"
             print(f"\n[最終回答]\n{not_found_message}")
-            return { "answer": not_found_message, "contexts": [] }
+        #     return { "answer": not_found_message, "contexts": [] }
         
         # 7. プロンプト構築と最終回答の生成
         print("\n[ステップ5/7] LLM用のプロンプトを構築中...")
