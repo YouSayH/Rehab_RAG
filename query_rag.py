@@ -188,10 +188,10 @@ class RAGPipeline:
                 "embedder": self.embedder,
                 **retriever_cfg.get('params', {})
             }
-            # もし使用するRetrieverが'GraphRetriever'の場合、llmインスタンスを追加で渡す
-            if retriever_cfg.get('class') == 'GraphRetriever':
+
+            if retriever_cfg.get('class') in ['GraphRetriever', 'CombinedRetriever']:
                 retriever_params['llm'] = self.llm
-                
+
             self.retriever = get_instance(
                 retriever_cfg['module'],
                 retriever_cfg['class'],
