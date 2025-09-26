@@ -71,6 +71,12 @@ database:
   path: "./db"
   collection_name: "rehab_rag_experiments"
 
+# グラフRAGと/hybrid_searchのハイブリッドは `hybrid_search_experiment` のDBを参照します。
+# database:
+#   path: "../hybrid_search_experiment/db"
+#   collection_name: "rehab_rag_experiments"
+
+
 # ===================================================================
 # DB構築フェーズ (`build_database.py` 実行時に使用)
 # ===================================================================
