@@ -93,7 +93,7 @@ builder:
   # module: rag_components.builders.raptor_builder
   # class: RAPTORBuilder
   # params:
-  #   clustering_eps: 0.4
+  #   clustering_eps: 0.05
   #   min_samples: 2
   #   max_levels: 3
 
@@ -117,17 +117,17 @@ build_components:
   # [エンベッダー] テキストをどうベクトル化するか (GraphBuilder以外で必須)
   embedder:
     # ローカルモデル (デフォルト)→今後のデフォルトはgeminiで使う
-    # module: rag_components.embedders.sentence_transformer_embedder
-    # class: SentenceTransformerEmbedder
-    # params:
-    #   model_name: "intfloat/multilingual-e5-large"
-    #   device: "auto"
+    module: rag_components.embedders.sentence_transformer_embedder
+    class: SentenceTransformerEmbedder
+    params:
+      model_name: "cl-nagoya/ruri-v3-310m"
+      device: "auto"
 
     # Gemini API
-    module: rag_components.embedders.gemini_embedder
-    class: GeminiEmbedder
-    params:
-      model_name: "gemini-embedding-001"
+    # module: rag_components.embedders.gemini_embedder
+    # class: GeminiEmbedder
+    # params:
+    #   model_name: "gemini-embedding-001"
 
 
 

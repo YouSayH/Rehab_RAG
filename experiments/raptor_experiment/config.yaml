@@ -93,7 +93,7 @@ builder:
   module: rag_components.builders.raptor_builder
   class: RAPTORBuilder
   params:
-    clustering_eps: 0.4
+    clustering_eps: 0.05
     min_samples: 2
     max_levels: 3
 
